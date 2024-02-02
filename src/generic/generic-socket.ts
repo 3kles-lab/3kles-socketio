@@ -25,7 +25,7 @@ export class GenericSocket extends AbstractGenericSocket {
         const patterns = process.env.PATTERNS ? Array.from(new Set(process.env.PATTERNS.split(','))) : [];
         const exchange = process.env.EXCHANGE || 'event';
 
-        console.log('exchange',exchange);
+        console.log('exchange', exchange);
         console.log('patterns', patterns);
 
         try {
@@ -41,17 +41,15 @@ export class GenericSocket extends AbstractGenericSocket {
                 }
             }, { durable: false });
         } catch (err) {
-            console.error(err)
+            console.error(err);
         }
-
-
     }
 
     protected async onNewUserConnected(user: any): Promise<void> {
-        // const detectNewUser = (process.env.DETECT_NEW_USER === 'true') || false;
+        const detectNewUser = (process.env.DETECT_NEW_USER === 'true') || false;
 
-        // if (detectNewUser) {
-        //     this.broker.send('new_user_connected', Buffer.from(JSON.stringify(user)), { persistent: true });
-        // }
+        if (detectNewUser) {
+            this.broker.send('new_user_connected', Buffer.from(JSON.stringify(user)), { persistent: true });
+        }
     }
 }
