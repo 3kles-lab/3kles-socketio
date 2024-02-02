@@ -1,0 +1,56 @@
+{
+  "name": "@3kles/3kles-socketio",
+  "version": "1.0.0",
+  "description": "Socket IO lib",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node --tls-min-v1.0 -r ts-node/register test/app.ts ",
+    "build": "gulp build",
+    "prod": "gulp build-prod"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://gitlab.3kles.local/h5-sdk/hermes/allocationmanagement/back.git"
+  },
+  "author": "c.dasilvacosta@3kles-consulting.com",
+  "license": "ISC",
+  "dependencies": {
+    "@3kles/3kles-corebe": "^2.5.11",
+    "@3kles/3kles-amqpbroker": "1.4.0",
+    "dotenv": "^10.0.0",
+    "jsonwebtoken": "^8.5.1",
+    "socket.io": "4.3.1",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.15.0",
+    "@types/amqplib": "^0.8.2",
+    "@types/gulp": "^4.0.9",
+    "@types/gulp-uglify": "^3.0.7",
+    "babel-preset-env": "^1.7.0",
+    "babelify": "^10.0.0",
+    "browserify": "^17.0.0",
+    "event-stream": "^4.0.1",
+    "gulp": "^4.0.2",
+    "gulp-clean": "^0.4.0",
+    "gulp-cli": "^2.3.0",
+    "gulp-concat": "^2.6.1",
+    "gulp-exec": "^5.0.0",
+    "gulp-foreach": "^0.1.0",
+    "gulp-mocha": "^8.0.0",
+    "gulp-rename": "^2.0.0",
+    "gulp-sourcemaps": "^3.0.0",
+    "gulp-tap": "^2.0.0",
+    "gulp-terser": "^2.0.1",
+    "gulp-typescript": "^6.0.0-alpha.1",
+    "gulp-use-tsconfig": "1.5.3",
+    "gulp-util": "^3.0.8",
+    "run-sequence": "^2.2.1",
+    "ts-node": "^10.2.1",
+    "tslint": "^5.20.1",
+    "typescript": "^4.3.5",
+    "vinyl-buffer": "^1.0.1",
+    "vinyl-source-stream": "^2.0.0"
+  }
+}
+
