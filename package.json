@@ -1,6 +1,6 @@
 {
   "name": "@3kles/3kles-socketio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Socket IO lib",
   "main": "index.js",
   "scripts": {
