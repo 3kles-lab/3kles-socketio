@@ -1,8 +1,8 @@
 {
   "name": "@3kles/3kles-socketio",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Socket IO lib",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "dev": "node --tls-min-v1.0 -r ts-node/register test/app.ts ",
     "build": "gulp build",
@@ -16,7 +16,7 @@
   "license": "ISC",
   "dependencies": {
     "@3kles/3kles-corebe": "^2.5.11",
-    "@3kles/3kles-amqpbroker": "1.4.0",
+    "@3kles/3kles-amqpbroker": "^1.4.0",
     "dotenv": "^10.0.0",
     "jsonwebtoken": "^8.5.1",
     "socket.io": "4.3.1",
