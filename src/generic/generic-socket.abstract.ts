@@ -13,9 +13,14 @@ export const multipleConnexion = (process.env.MULTIPLE_CONNEXION === 'true') || 
 export abstract class AbstractGenericSocket implements IGenericSocket {
     public readonly io: Server;
     private readonly users: Map<string, any> = new Map<string, any>();
+    private listeners: { event: string; listener: (...args: any[]) => void }[] = [];
 
     constructor(server: http.Server, config: Partial<ServerOptions>) {
         this.io = new Server(server, config);
+    }
+
+    public addListener(listener?: { event: string; listener: (...args: any[]) => void }): void {
+        this.listeners.push(listener);
     }
 
     public async start(): Promise<void> {
@@ -49,6 +54,10 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
                 sessionID: socket.data.sessionID,
                 userID: socket.data.userID,
                 login: socket.data.login,
+            });
+
+            this.listeners.forEach((listener) => {
+                socket.on(listener.event, listener.listener);
             });
 
             socket.on('subscribe', async (room) => {
