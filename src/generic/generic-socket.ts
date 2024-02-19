@@ -5,7 +5,7 @@ import { MessageBroker } from "@3kles/3kles-amqpbroker";
 
 export class GenericSocket extends AbstractGenericSocket {
 
-    constructor(private broker: MessageBroker, server: http.Server, config: Partial<ServerOptions> = {
+    constructor(protected broker: MessageBroker, server: http.Server, config: Partial<ServerOptions> = {
         cors: {
             origin: "*",
             methods: ["GET", "POST"]
