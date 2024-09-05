@@ -103,7 +103,7 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
     }
 
     protected async auth(socket: Socket<any, any, any>, next: (err?: any) => void): Promise<void> {
-        if (authRequired) {
+        if (this.config.authRequired) {
             if (socket.handshake.auth?.token) {
                 try {
                     const decoded = await this.authClient.verify(socket.handshake.auth.token);
