@@ -10,15 +10,18 @@ import { GenericJWKSAuth } from "./auth/generic-jwks-auth";
 export const authRequired = (process.env.JWT_AUTHENTICATION === 'true') || false;
 export const jwtSecretKey = process.env.JWT_SECRET_KEY;
 
-export const multipleConnexion = process.env.MULTIPLE_CONNEXION !== undefined ? (process.env.MULTIPLE_CONNEXION === 'true') : true; // allow multiple connections with the same account
-
 export abstract class AbstractGenericSocket implements IGenericSocket {
     public readonly io: Server;
     private readonly users: Map<string, any> = new Map<string, any>();
     private listeners: { event: string; listener: (socket: Socket, ...args: any[]) => void }[] = [];
     public authClient: IGenericAuth;
 
-    constructor(server: http.Server, config: Partial<ServerOptions>) {
+    constructor(server: http.Server, protected config: Partial<ServerOptions & { authRequired?: boolean, jwksURI?: string, jwtSecretKey?: string, multipleConnexion?: boolean }>) {
+        this.config.authRequired = process.env.JWT_AUTHENTICATION === 'true' || this.config.authRequired;
+        this.config.jwksURI = process.env.JWKS_URI || this.config.jwksURI;
+        this.config.jwtSecretKey = process.env.JWT_SECRET_KEY || this.config.jwtSecretKey;
+        this.config.multipleConnexion = process.env.MULTIPLE_CONNEXION !== undefined ?
+            (process.env.MULTIPLE_CONNEXION === 'true') : (this.config.multipleConnexion !== undefined ? this.config.multipleConnexion : true); // allow multiple connections with the same account
         this.io = new Server(server, config);
     }
 
@@ -37,11 +40,11 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
     }
 
     public initAuth(): void {
-        if (process.env.JWT_SECRET_KEY) {
-            this.authClient = new GenericJWTAuth(process.env.JWT_SECRET_KEY);
-        } else if (process.env.JWKS_URI) {
+        if (this.config.jwtSecretKey) {
+            this.authClient = new GenericJWTAuth(this.config.jwtSecretKey);
+        } else if (this.config.jwksURI) {
             this.authClient = new GenericJWKSAuth({
-                jwksUri: process.env.JWKS_URI,
+                jwksUri: this.config.jwksURI,
                 cache: true,
                 rateLimit: true,
                 jwksRequestsPerMinute: 10
@@ -132,7 +135,7 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
     }
 
     protected async multipleConnection(socket: Socket<any>, next: (err?: any) => void): Promise<void> {
-        if (!multipleConnexion && this.authClient) {
+        if (!this.config.multipleConnexion && this.authClient) {
             Object.entries(this.users)
                 .filter(([sessionId, value]) => value.connected)
                 .filter(([sessionId, value]) => sessionId !== socket.data.sessionID)
