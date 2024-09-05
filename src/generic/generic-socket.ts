@@ -5,17 +5,18 @@ import { MessageBroker } from "@3kles/3kles-amqpbroker";
 
 export class GenericSocket extends AbstractGenericSocket {
 
-    constructor(protected broker: MessageBroker, server: http.Server, config: Partial<ServerOptions> = {
-        cors: {
-            origin: "*",
-            methods: ["GET", "POST"]
-        },
-        path: process.env.SOCKET_PATH ? (process.env.SOCKET_PATH.startsWith('/') ? process.env.SOCKET_PATH : `/${process.env.SOCKET_PATH}`) : '/socket.io/',
-        connectTimeout: process.env.CONNECT_TIMEOUT ? +process.env.CONNECT_TIMEOUT : 45000,
-        pingTimeout: process.env.PING_TIMEOUT ? +process.env.PING_TIMEOUT : 20000,
-        pingInterval: process.env.PING_INTERVAL ? +process.env.PING_INTERVAL : 25000,
-        maxHttpBufferSize: process.env.MAX_HTTP_BUFFER_SIZE ? +process.env.MAX_HTTP_BUFFER_SIZE : 1e5
-    }) {
+    constructor(protected broker: MessageBroker, server: http.Server,
+        protected config: Partial<ServerOptions & { authRequired?: boolean, jwksURI?: string, jwtSecretKey?: string, multipleConnexion?: boolean }> = {
+            cors: {
+                origin: "*",
+                methods: ["GET", "POST"]
+            },
+            path: process.env.SOCKET_PATH ? (process.env.SOCKET_PATH.startsWith('/') ? process.env.SOCKET_PATH : `/${process.env.SOCKET_PATH}`) : '/socket.io/',
+            connectTimeout: process.env.CONNECT_TIMEOUT ? +process.env.CONNECT_TIMEOUT : 45000,
+            pingTimeout: process.env.PING_TIMEOUT ? +process.env.PING_TIMEOUT : 20000,
+            pingInterval: process.env.PING_INTERVAL ? +process.env.PING_INTERVAL : 25000,
+            maxHttpBufferSize: process.env.MAX_HTTP_BUFFER_SIZE ? +process.env.MAX_HTTP_BUFFER_SIZE : 1e5
+        }) {
         super(server, config);
     }
 
