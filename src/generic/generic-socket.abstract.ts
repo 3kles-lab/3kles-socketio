@@ -14,15 +14,27 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
     public readonly io: Server;
     private readonly users: Map<string, any> = new Map<string, any>();
     private listeners: { event: string; listener: (socket: Socket, ...args: any[]) => void }[] = [];
+    protected config?: Partial<ServerOptions & { authRequired?: boolean, jwksURI?: string, jwtSecretKey?: string, multipleConnexion?: boolean }>;
     public authClient: IGenericAuth;
 
-    constructor(server: http.Server, protected config: Partial<ServerOptions & { authRequired?: boolean, jwksURI?: string, jwtSecretKey?: string, multipleConnexion?: boolean }>) {
-        this.config.authRequired = process.env.JWT_AUTHENTICATION === 'true' || this.config.authRequired;
-        this.config.jwksURI = process.env.JWKS_URI || this.config.jwksURI;
-        this.config.jwtSecretKey = process.env.JWT_SECRET_KEY || this.config.jwtSecretKey;
-        this.config.multipleConnexion = process.env.MULTIPLE_CONNEXION !== undefined ?
-            (process.env.MULTIPLE_CONNEXION === 'true') : (this.config.multipleConnexion !== undefined ? this.config.multipleConnexion : true); // allow multiple connections with the same account
-        this.io = new Server(server, config);
+    constructor(server: http.Server, c?: Partial<ServerOptions & { authRequired?: boolean, jwksURI?: string, jwtSecretKey?: string, multipleConnexion?: boolean }>) {
+        this.config = {
+            cors: {
+                origin: "*",
+                methods: ["GET", "POST"]
+            },
+            path: process.env.SOCKET_PATH ? (process.env.SOCKET_PATH.startsWith('/') ? process.env.SOCKET_PATH : `/${process.env.SOCKET_PATH}`) : '/socket.io/',
+            connectTimeout: process.env.CONNECT_TIMEOUT ? +process.env.CONNECT_TIMEOUT : 45000,
+            pingTimeout: process.env.PING_TIMEOUT ? +process.env.PING_TIMEOUT : 20000,
+            pingInterval: process.env.PING_INTERVAL ? +process.env.PING_INTERVAL : 25000,
+            maxHttpBufferSize: process.env.MAX_HTTP_BUFFER_SIZE ? +process.env.MAX_HTTP_BUFFER_SIZE : 1e5,
+            authRequired: process.env.JWT_AUTHENTICATION === 'true',
+            jwksURI: process.env.JWKS_URI,
+            jwtSecretKey: process.env.JWT_SECRET_KEY,
+            multipleConnexion: process.env.MULTIPLE_CONNEXION !== undefined ? (process.env.MULTIPLE_CONNEXION === 'true') : false, // allow multiple connections with the same account
+            ...c,
+        }
+        this.io = new Server(server, this.config);
     }
 
     public addListener(listener?: { event: string; listener: (socket: Socket, ...args: any[]) => void }): void {
@@ -109,6 +121,7 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
                     const decoded = await this.authClient.verify(socket.handshake.auth.token);
                     socket.data.auth = decoded;
                 } catch (err) {
+                    console.error(err);
                     return next(err);
                 }
             } else {

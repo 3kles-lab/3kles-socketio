@@ -12,14 +12,18 @@ import { IonSocket } from './ion-socket';
     process.env.PATTERNS = 'toto';
     process.env.EXCHANGE = 'aaaa';
     process.env.JWKS_URI = 'https://mingle-sso.eu1.inforcloudsuite.com/ext/infor/oauthtoken/jwks';
-    process.env.JWT_AUTHENTICATION = 'true';
 
     const broker = await MessageBroker.getInstance();
 
     const app = new GenericApp();
     const server = app.startApp(8888);
-    const genericSocket = new IonSocket(broker, server);
-
+    const genericSocket = new IonSocket(broker, server,
+        {
+            jwksURI: process.env.JWKS_URI,
+            authRequired: true,
+            multipleConnexion: true
+        }
+    )
     // genericSocket.addListener({
     //     event: 'toto',
     //     listener: async (socket, response) => {
