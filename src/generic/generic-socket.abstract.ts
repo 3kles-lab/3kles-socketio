@@ -162,12 +162,13 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
 
     protected async emitMessage(message: IGenericMessage): Promise<void> {
         if (message.to) {
-            Array.from(this.users.values())
+            const user = Array.from(this.users.values())
                 .filter((user) => user.connected)
-                .filter((user) => user.userID === message.to)
-                .forEach((user) => {
-                    this.io.to(user.userID).emit(message.type || 'notification', message.content);
-                });
+                .find((user) => user.userID === message.to)
+
+            if (user) {
+                this.io.to(user.userID).emit(message.type || 'notification', message.content);
+            }
         } else if (message.room) {
             this.io.to(message.room).emit(message.type || 'notification', message.content);
 
@@ -214,18 +215,12 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
     }
 
     protected async onDisconnect(socket: Socket<any>): Promise<void> {
-        const matchingSockets = await this.io.in(socket.data.userID).allSockets();
-        const isDisconnected = matchingSockets.size === 0;
-        if (isDisconnected) {
-            this.users.set(socket.data.sessionID, {
-                userID: socket.data.userID,
-                connected: false,
-            });
-        }
-
+        this.users.delete(socket.data.sessionID);
     }
     protected async onError(socket: Socket<any>, error: any): Promise<void> {
+        console.log('error');
         if (error && error.message === "invalid token") {
+            this.users.delete(socket.data.sessionID);
             socket.disconnect();    // disconnect invalid user
         }
         await this.handleErrors(error);

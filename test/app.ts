@@ -9,8 +9,8 @@ import { IonSocket } from './ion-socket';
     process.env.RABBITMQ_URL = '192.168.111.63';
     process.env.RABBITMQ_PROTOCOL = 'amqp';
     process.env.RABBITMQ_PORT = '5672';
-    process.env.PATTERNS = 'toto';
-    process.env.EXCHANGE = 'aaaa';
+    process.env.PATTERNS = 'process.event';
+    process.env.EXCHANGE='cockpitdata.event';
     process.env.JWKS_URI = 'https://mingle-sso.eu1.inforcloudsuite.com/ext/infor/oauthtoken/jwks';
 
     const broker = await MessageBroker.getInstance();
