@@ -22,10 +22,6 @@ module.exports = {
   },
   resolve: {
     extensions: [".ts", ".js"], // Resolve these extensions
-    fallback: {
-      bufferutil: false,
-      "utf-8-validate": false,
-    },
   },
   optimization: {
     minimize: true, // Minimize the output bundle
@@ -42,7 +38,6 @@ module.exports = {
     }),
   ],
   externals: {
-    mongoose: "commonjs socketio", // Exclude socketio from the bundle
     express: "commonjs express", // Exclude express from the bundle
   },
   performance: {
