@@ -1,6 +1,6 @@
 {
   "name": "@3kles/3kles-socketio",
-  "version": "2.1.7",
+  "version": "2.1.8",
   "description": "Socket IO lib",
   "main": "dist/index.js",
   "scripts": {
@@ -9,9 +9,20 @@
   },
   "repository": {
     "type": "git",
-    "url": "http://gitlab.3kles.local/h5-sdk/hermes/allocationmanagement/back.git"
+    "url": "https://github.com/3kles-lab/3kles-socketio"
   },
-  "author": "c.dasilvacosta@3kles-consulting.com",
+  "keywords": [
+    "3KLES",
+    "Express",
+    "Core",
+    "Socket IO",
+    "RabbitMQ"
+  ],
+  "bugs": {
+    "url": "https://github.com/3kles-lab/3kles-socketio/issues"
+  },
+  "homepage": "https://github.com/3kles-lab/3kles-socketio",
+  "author": "3Kles Lab",
   "license": "ISC",
   "dependencies": {
     "@3kles/3kles-corebe": "^3.0.4",
