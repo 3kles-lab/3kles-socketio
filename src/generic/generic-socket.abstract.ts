@@ -1,29 +1,36 @@
-import * as http from "http";
-import { ServerOptions, Server, Socket } from "socket.io";
-import { IGenericSocket } from "./generic-socket.interface";
+import * as http from 'http';
+import { ServerOptions, Server, Socket } from 'socket.io';
+import { IGenericSocket } from './generic-socket.interface';
 import { v4 as uuidv4 } from 'uuid';
-import { IGenericMessage } from "../models";
-import { IGenericAuth } from "./auth/generic-auth.interface";
-import { GenericJWTAuth } from "./auth/generic-jwt-auth";
-import { GenericJWKSAuth } from "./auth/generic-jwks-auth";
+import { IGenericMessage } from '../models';
+import { IGenericAuth } from './auth/generic-auth.interface';
+import { GenericJWTAuth } from './auth/generic-jwt-auth';
+import { GenericJWKSAuth } from './auth/generic-jwks-auth';
 
-export const authRequired = (process.env.JWT_AUTHENTICATION === 'true') || false;
+export const authRequired = process.env.JWT_AUTHENTICATION === 'true' || false;
 export const jwtSecretKey = process.env.JWT_SECRET_KEY;
 
 export abstract class AbstractGenericSocket implements IGenericSocket {
     public readonly io: Server;
     private readonly users: Map<string, any> = new Map<string, any>();
     private listeners: { event: string; listener: (socket: Socket, ...args: any[]) => void }[] = [];
-    protected config?: Partial<ServerOptions & { authRequired?: boolean, jwksURI?: string, jwtSecretKey?: string, multipleConnexion?: boolean }>;
-    public authClient: IGenericAuth;
+    protected config: Partial<ServerOptions & { authRequired?: boolean; jwksURI?: string; jwtSecretKey?: string; multipleConnexion?: boolean }>;
+    public authClient: IGenericAuth | undefined;
 
-    constructor(server: http.Server, c?: Partial<ServerOptions & { authRequired?: boolean, jwksURI?: string, jwtSecretKey?: string, multipleConnexion?: boolean }>) {
+    constructor(
+        server: http.Server,
+        c?: Partial<ServerOptions & { authRequired?: boolean; jwksURI?: string; jwtSecretKey?: string; multipleConnexion?: boolean }>,
+    ) {
         this.config = {
             cors: {
-                origin: "*",
-                methods: ["GET", "POST"]
+                origin: '*',
+                methods: ['GET', 'POST'],
             },
-            path: process.env.SOCKET_PATH ? (process.env.SOCKET_PATH.startsWith('/') ? process.env.SOCKET_PATH : `/${process.env.SOCKET_PATH}`) : '/socket.io/',
+            path: process.env.SOCKET_PATH
+                ? process.env.SOCKET_PATH.startsWith('/')
+                    ? process.env.SOCKET_PATH
+                    : `/${process.env.SOCKET_PATH}`
+                : '/socket.io/',
             connectTimeout: process.env.CONNECT_TIMEOUT ? +process.env.CONNECT_TIMEOUT : 45000,
             pingTimeout: process.env.PING_TIMEOUT ? +process.env.PING_TIMEOUT : 20000,
             pingInterval: process.env.PING_INTERVAL ? +process.env.PING_INTERVAL : 25000,
@@ -31,14 +38,16 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
             authRequired: process.env.JWT_AUTHENTICATION === 'true',
             jwksURI: process.env.JWKS_URI,
             jwtSecretKey: process.env.JWT_SECRET_KEY,
-            multipleConnexion: process.env.MULTIPLE_CONNEXION !== undefined ? (process.env.MULTIPLE_CONNEXION === 'true') : false, // allow multiple connections with the same account
+            multipleConnexion: process.env.MULTIPLE_CONNEXION !== undefined ? process.env.MULTIPLE_CONNEXION === 'true' : false, // allow multiple connections with the same account
             ...c,
-        }
+        };
         this.io = new Server(server, this.config);
     }
 
     public addListener(listener?: { event: string; listener: (socket: Socket, ...args: any[]) => void }): void {
-        this.listeners.push(listener);
+        if (listener) {
+            this.listeners.push(listener);
+        }
     }
 
     public async start(): Promise<void> {
@@ -52,6 +61,12 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
     }
 
     public initAuth(): void {
+        if (!this.config.authRequired) {
+            return;
+        }
+        if (this.config.jwtSecretKey && this.config.jwksURI) {
+            throw new Error('JWT_SECRET_KEY and JWKS_URI cannot be configured together');
+        }
         if (this.config.jwtSecretKey) {
             this.authClient = new GenericJWTAuth(this.config.jwtSecretKey);
         } else if (this.config.jwksURI) {
@@ -59,9 +74,14 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
                 jwksUri: this.config.jwksURI,
                 cache: true,
                 rateLimit: true,
-                jwksRequestsPerMinute: 10
+                jwksRequestsPerMinute: 10,
+                algorithms: ['RS256'],
+                issuer: process.env.JWT_ISSUER,
+                audience: process.env.JWT_AUDIENCE,
+                userIdClaim: process.env.JWT_USER_ID_CLAIM ?? 'sub',
             });
         }
+        throw new Error('Authentication is required but no JWT authentication provider is configured');
     }
 
     protected initMiddlewares(): void {
@@ -93,19 +113,19 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
                 });
             });
 
-            socket.on('subscribe', async (room) => {
+            socket.on('subscribe', async (room: string | string[]) => {
                 await this.onSubscribe(socket, room);
             });
 
-            socket.on('unsubscribe', async (room) => {
+            socket.on('unsubscribe', async (room: string) => {
                 await this.onUnsubscribe(socket, room);
             });
 
-            socket.on("disconnect", async () => {
+            socket.on('disconnect', async () => {
                 await this.onDisconnect(socket);
             });
 
-            socket.on("error", async (err) => {
+            socket.on('error', async (err) => {
                 await this.onError(socket, err);
             });
 
@@ -118,7 +138,7 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
         if (this.config.authRequired) {
             if (socket.handshake.auth?.token) {
                 try {
-                    const decoded = await this.authClient.verify(socket.handshake.auth.token);
+                    const decoded = await this.authClient?.verify(socket.handshake.auth.token);
                     socket.data.auth = decoded;
                 } catch (err) {
                     console.error(err);
@@ -132,31 +152,44 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
     }
 
     protected async createSession(socket: Socket<any>, next: (err?: any) => void): Promise<void> {
-        const sessionID = socket.handshake.auth.sessionID;
+        try {
+            const authenticatedUserId = this.authClient ? this.authClient.getUserId(socket.data.auth) : uuidv4();
 
-        if (sessionID) {
-            const session = this.users.get(sessionID);
-            if (session) {
-                socket.data.sessionID = sessionID;
-                socket.data.userID = session.userID;
-                return next();
+            const requestedSessionId = socket.handshake.auth?.sessionID;
+            if (requestedSessionId) {
+                const session = this.users.get(requestedSessionId);
+
+                if (session && session.userID === authenticatedUserId) {
+                    socket.data.sessionID = requestedSessionId;
+                    socket.data.userID = authenticatedUserId;
+                    return next();
+                }
             }
+
+            socket.data.sessionID = uuidv4();
+            socket.data.userID = authenticatedUserId;
+
+            next();
+        } catch {
+            next(new Error('Invalid authenticated user'));
         }
-        socket.data.sessionID = uuidv4();
-        socket.data.userID = this.authClient?.getUserId(socket.data.auth) || uuidv4();
-        next();
     }
 
     protected async multipleConnection(socket: Socket<any>, next: (err?: any) => void): Promise<void> {
-        if (!this.config.multipleConnexion && this.authClient) {
-            Object.entries(this.users)
-                .filter(([sessionId, value]) => value.connected)
-                .filter(([sessionId, value]) => sessionId !== socket.data.sessionID)
-                .forEach(([sessionId, value]) => {
-                    value.socket?.disconnect(true);
-                    this.users.delete(sessionId);
-                });
+        if (this.config.multipleConnexion) {
+            return next();
         }
+
+        for (const [sessionId, session] of this.users.entries()) {
+            const sameUser = session.userID === socket.data.userID;
+            const differentSession = sessionId !== socket.data.sessionID;
+
+            if (sameUser && differentSession && session.connected) {
+                session.socket?.disconnect(true);
+                this.users.delete(sessionId);
+            }
+        }
+
         next();
     }
 
@@ -164,14 +197,13 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
         if (message.to) {
             const user = Array.from(this.users.values())
                 .filter((user) => user.connected)
-                .find((user) => user.userID === message.to)
+                .find((user) => user.userID === message.to);
 
             if (user) {
                 this.io.to(user.userID).emit(message.type || 'notification', message.content);
             }
         } else if (message.room) {
             this.io.to(message.room).emit(message.type || 'notification', message.content);
-
         } else {
             this.io.emit(message.type || 'notification', message.content);
         }
@@ -181,10 +213,10 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
         this.users.set(socket.data.sessionID, {
             userID: socket.data.userID,
             connected: true,
-            socket
+            socket,
         });
 
-        socket.emit("session", {
+        socket.emit('session', {
             sessionID: socket.data.sessionID,
             userID: socket.data.userID,
         });
@@ -192,7 +224,7 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
         socket.join(socket.data.userID);
     }
 
-    protected async onSubscribe(socket: Socket<any>, room: any): Promise<void> {
+    protected async onSubscribe(socket: Socket<any>, room: string | string[]): Promise<void> {
         try {
             socket.join(room);
         } catch (err) {
@@ -200,13 +232,12 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
         }
     }
 
-    protected async onUnsubscribe(socket: Socket<any>, room: any): Promise<void> {
+    protected async onUnsubscribe(socket: Socket<any>, room: string): Promise<void> {
         try {
             socket.leave(room);
         } catch (err) {
             console.error('Error leave room', err);
         }
-
     }
     protected async onNewUserConnected(user: any): Promise<void> {
         /**
@@ -219,16 +250,14 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
     }
     protected async onError(socket: Socket<any>, error: any): Promise<void> {
         console.log('error');
-        if (error && error.message === "invalid token") {
+        if (error && error.message === 'invalid token') {
             this.users.delete(socket.data.sessionID);
-            socket.disconnect();    // disconnect invalid user
+            socket.disconnect(); // disconnect invalid user
         }
         await this.handleErrors(error);
-
     }
 
     protected async handleErrors(error: any): Promise<void> {
         console.error(error);
     }
-
 }
