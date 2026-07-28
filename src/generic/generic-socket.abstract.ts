@@ -80,8 +80,9 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
                 audience: process.env.JWT_AUDIENCE,
                 userIdClaim: process.env.JWT_USER_ID_CLAIM ?? 'sub',
             });
+        } else {
+            throw new Error('Authentication is required but no JWT authentication provider is configured');
         }
-        throw new Error('Authentication is required but no JWT authentication provider is configured');
     }
 
     protected initMiddlewares(): void {
