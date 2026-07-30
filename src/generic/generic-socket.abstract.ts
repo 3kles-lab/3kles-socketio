@@ -123,7 +123,6 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
 
             socket.on('subscribe', async (room: string | string[], callback?: (result: RoomOperationResult | RoomOperationResult[]) => void) => {
                 const result = await this.onSubscribe(socket, room);
-                console.log(result);
                 callback?.(result);
             });
 

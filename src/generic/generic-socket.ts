@@ -34,8 +34,10 @@ export class GenericSocket extends AbstractGenericSocket {
                         try {
                             const notification = JSON.parse(msg.content.toString());
                             await this.emitMessage(notification);
-                        } catch (err) {
-                            console.error(err);
+                        } catch (error) {
+                            this.logger.error?.('Failed to process notification message', {
+                                error,
+                            });
                         }
                         ack();
                     }

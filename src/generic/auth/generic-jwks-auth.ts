@@ -29,26 +29,15 @@ export class GenericJWKSAuth implements IGenericAuth {
     }
 
     public async verify(accessToken: string): Promise<string | JwtPayload> {
-        try {
-            const token = this.removeBearerPrefix(accessToken);
-            const publicKey = await this.getPublicKey(this.getKid(token));
-            const payload = verify(token, publicKey, this.verifyOptions);
+        const token = this.removeBearerPrefix(accessToken);
+        const publicKey = await this.getPublicKey(this.getKid(token));
+        const payload = verify(token, publicKey, this.verifyOptions);
 
-            if (typeof payload === 'string') {
-                throw new Error('Unexpected JWT string payload');
-            }
-
-            return payload;
-        } catch (e) {
-            if (e instanceof SigningKeyNotFoundError) {
-                console.error('Error retrieving public key', e);
-            } else if (e instanceof JwksRateLimitError) {
-                console.error('Jwks limit reached', e);
-            } else {
-                console.error('Error during token validation', e);
-            }
-            throw e;
+        if (typeof payload === 'string') {
+            throw new Error('Unexpected JWT string payload');
         }
+
+        return payload;
     }
 
     public getUserId(auth: JwtPayload): string {

@@ -13,13 +13,7 @@ export class GenericJWTAuth implements IGenericAuth {
     }
 
     public async verify(accessToken: string): Promise<string | JwtPayload> {
-        try {
-            return jwt.verify(accessToken, this.jwtSecretKey);
-        } catch (e) {
-            console.error('Error during token validation', e);
-            throw e;
-        }
-
+        return jwt.verify(accessToken, this.jwtSecretKey);
     }
 
 }
