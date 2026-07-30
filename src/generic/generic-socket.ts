@@ -15,7 +15,7 @@ export class GenericSocket extends AbstractGenericSocket {
     public async start(): Promise<void> {
         await super.start();
 
-        const patterns = process.env.PATTERNS ? Array.from(new Set(process.env.PATTERNS.split(','))) : [];
+        const patterns = process.env.PATTERNS ? Array.from(new Set(process.env.PATTERNS.split(','))) : '#';
         const exchange = process.env.EXCHANGE || 'event';
 
         this.logger.info?.('Broker subscribe', {
