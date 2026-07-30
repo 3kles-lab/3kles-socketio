@@ -1,3 +1,10 @@
+# [2.4.0](http://gitlab.3kles.local/3kles/lib/corejs/3kles-socketio/compare/v2.3.1...v2.4.0) (2026-07-30)
+
+
+### Features
+
+* Default '#' pattern ([77f7892](http://gitlab.3kles.local/3kles/lib/corejs/3kles-socketio/commit/77f7892b0f33a30836bbb56ada667c3f0b37df5d))
+
 ## [2.3.1](http://gitlab.3kles.local/3kles/lib/corejs/3kles-socketio/compare/v2.3.0...v2.3.1) (2026-07-30)
 
 
