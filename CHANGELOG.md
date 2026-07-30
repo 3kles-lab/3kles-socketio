@@ -1,3 +1,10 @@
+## [2.3.1](http://gitlab.3kles.local/3kles/lib/corejs/3kles-socketio/compare/v2.3.0...v2.3.1) (2026-07-30)
+
+
+### Bug Fixes
+
+* Remove console logs ([23809a8](http://gitlab.3kles.local/3kles/lib/corejs/3kles-socketio/commit/23809a8d5266f8a802edf75078b5ad0471fa0027))
+
 # [2.3.0](http://gitlab.3kles.local/3kles/lib/corejs/3kles-socketio/compare/v2.2.1...v2.3.0) (2026-07-30)
 
 
