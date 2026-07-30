@@ -1,3 +1,10 @@
+# [2.3.0](http://gitlab.3kles.local/3kles/lib/corejs/3kles-socketio/compare/v2.2.1...v2.3.0) (2026-07-30)
+
+
+### Features
+
+* add room control access ([e01f81e](http://gitlab.3kles.local/3kles/lib/corejs/3kles-socketio/commit/e01f81e43a71ec27a6d15a26561d883032de9854))
+
 ## [2.2.1](http://gitlab.3kles.local/3kles/lib/corejs/3kles-socketio/compare/v2.2.0...v2.2.1) (2026-07-28)
 
 
