@@ -4,3 +4,4 @@ export * from './generic-socket.interface';
 export * from './auth/generic-auth.interface';
 export * from './auth/generic-jwks-auth';
 export * from './auth/generic-jwt-auth';
+export * from './access/room-access.interface';

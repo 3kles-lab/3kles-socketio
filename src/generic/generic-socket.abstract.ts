@@ -1,11 +1,12 @@
 import * as http from 'http';
-import { ServerOptions, Server, Socket } from 'socket.io';
-import { IGenericSocket } from './generic-socket.interface';
+import { Server, Socket } from 'socket.io';
+import { GenericSocketLogger, GenericSocketOptions, IGenericSocket } from './generic-socket.interface';
 import { v4 as uuidv4 } from 'uuid';
 import { IGenericMessage } from '../models';
 import { IGenericAuth } from './auth/generic-auth.interface';
 import { GenericJWTAuth } from './auth/generic-jwt-auth';
 import { GenericJWKSAuth } from './auth/generic-jwks-auth';
+import { RoomOperationResult } from './access/room-access.interface';
 
 export const authRequired = process.env.JWT_AUTHENTICATION === 'true' || false;
 export const jwtSecretKey = process.env.JWT_SECRET_KEY;
@@ -14,13 +15,12 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
     public readonly io: Server;
     private readonly users: Map<string, any> = new Map<string, any>();
     private listeners: { event: string; listener: (socket: Socket, ...args: any[]) => void }[] = [];
-    protected config: Partial<ServerOptions & { authRequired?: boolean; jwksURI?: string; jwtSecretKey?: string; multipleConnexion?: boolean }>;
+    protected config: GenericSocketOptions;
     public authClient: IGenericAuth | undefined;
 
-    constructor(
-        server: http.Server,
-        c?: Partial<ServerOptions & { authRequired?: boolean; jwksURI?: string; jwtSecretKey?: string; multipleConnexion?: boolean }>,
-    ) {
+    protected readonly logger: GenericSocketLogger;
+
+    constructor(server: http.Server, c?: GenericSocketOptions) {
         this.config = {
             cors: {
                 origin: '*',
@@ -39,9 +39,16 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
             jwksURI: process.env.JWKS_URI,
             jwtSecretKey: process.env.JWT_SECRET_KEY,
             multipleConnexion: process.env.MULTIPLE_CONNEXION !== undefined ? process.env.MULTIPLE_CONNEXION === 'true' : false, // allow multiple connections with the same account
+            roomAccessControlRequired: process.env.ROOM_ACCESS_CONTROL_REQUIRED === 'true',
             ...c,
         };
-        this.io = new Server(server, this.config);
+
+        this.logger = this.config.logger ?? console;
+
+        const { authRequired, jwksURI, jwtSecretKey, multipleConnexion, roomAccessControl, roomAccessControlRequired, logger, ...socketOptions } =
+            this.config;
+
+        this.io = new Server(server, socketOptions);
     }
 
     public addListener(listener?: { event: string; listener: (socket: Socket, ...args: any[]) => void }): void {
@@ -114,12 +121,15 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
                 });
             });
 
-            socket.on('subscribe', async (room: string | string[]) => {
-                await this.onSubscribe(socket, room);
+            socket.on('subscribe', async (room: string | string[], callback?: (result: RoomOperationResult | RoomOperationResult[]) => void) => {
+                const result = await this.onSubscribe(socket, room);
+                console.log(result);
+                callback?.(result);
             });
 
-            socket.on('unsubscribe', async (room: string) => {
-                await this.onUnsubscribe(socket, room);
+            socket.on('unsubscribe', async (room: string, callback?: (result: RoomOperationResult) => void) => {
+                const result = await this.onUnsubscribe(socket, room);
+                callback?.(result);
             });
 
             socket.on('disconnect', async () => {
@@ -141,9 +151,13 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
                 try {
                     const decoded = await this.authClient?.verify(socket.handshake.auth.token);
                     socket.data.auth = decoded;
-                } catch (err) {
-                    console.error(err);
-                    return next(err);
+                } catch (error) {
+                    this.logger.error?.('Error auth', {
+                        userID: socket.data.userID,
+                        error,
+                    });
+
+                    return next(error);
                 }
             } else {
                 return next(new Error('No token'));
@@ -225,19 +239,113 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
         socket.join(socket.data.userID);
     }
 
-    protected async onSubscribe(socket: Socket<any>, room: string | string[]): Promise<void> {
-        try {
-            socket.join(room);
-        } catch (err) {
-            console.error('Error join room', err);
+    protected async onSubscribe(socket: Socket<any>, requestedRooms: string | string[]): Promise<RoomOperationResult | RoomOperationResult[]> {
+        const results: RoomOperationResult[] = [];
+
+        const rooms = Array.isArray(requestedRooms) ? [...new Set(requestedRooms)] : [requestedRooms];
+
+        for (const room of rooms) {
+            if (!this.isValidRoom(room)) {
+                this.logger.warn?.('Room not valid', {
+                    userID: socket.data.userID,
+                    room,
+                });
+                results.push({
+                    success: false,
+                    room: String(room),
+                    error: 'INVALID_ROOM',
+                });
+                continue;
+            }
+
+            const authorized = await this.canAccessRoom(socket, room, 'subscribe');
+
+            if (!authorized) {
+                this.logger.warn?.('Room access denied', {
+                    userID: socket.data.userID,
+                    room,
+                });
+
+                results.push({
+                    success: false,
+                    room,
+                    error: 'ACCESS_DENIED',
+                });
+
+                continue;
+            }
+
+            try {
+                socket.join(room);
+                results.push({
+                    success: true,
+                    room,
+                });
+            } catch (error) {
+                this.logger.error?.('Error joining room', {
+                    userID: socket.data.userID,
+                    room,
+                    error,
+                });
+
+                results.push({
+                    success: false,
+                    room,
+                    error: 'SUBSCRIBE_ERROR',
+                });
+            }
         }
+
+        return results;
     }
 
-    protected async onUnsubscribe(socket: Socket<any>, room: string): Promise<void> {
+    protected async onUnsubscribe(socket: Socket<any>, room: string): Promise<RoomOperationResult> {
+        if (!this.isValidRoom(room)) {
+            this.logger.warn?.('Room not valid', {
+                userID: socket.data.userID,
+                room,
+            });
+
+            return {
+                success: false,
+                room: String(room),
+                error: 'INVALID_ROOM',
+            };
+        }
+
+        const authorized = await this.canAccessRoom(socket, room, 'unsubscribe');
+
+        if (!authorized) {
+            this.logger.warn?.('Room access denied', {
+                userID: socket.data.userID,
+                room,
+            });
+
+            return {
+                success: false,
+                room,
+                error: 'ACCESS_DENIED',
+            };
+        }
+
         try {
             socket.leave(room);
-        } catch (err) {
-            console.error('Error leave room', err);
+            return {
+                success: true,
+                room,
+            };
+        } catch (error) {
+            this.logger.error?.('Error leaving room', {
+                userID: socket.data.userID,
+                room,
+                error,
+            });
+
+            return {
+                success: false,
+                room,
+                error: 'UNSUBSCRIBE_ERROR',
+            };
         }
     }
     protected async onNewUserConnected(user: any): Promise<void> {
@@ -250,7 +358,6 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
         this.users.delete(socket.data.sessionID);
     }
     protected async onError(socket: Socket<any>, error: any): Promise<void> {
-        console.log('error');
         if (error && error.message === 'invalid token') {
             this.users.delete(socket.data.sessionID);
             socket.disconnect(); // disconnect invalid user
@@ -259,6 +366,39 @@ export abstract class AbstractGenericSocket implements IGenericSocket {
     }
 
     protected async handleErrors(error: any): Promise<void> {
-        console.error(error);
+        this.logger.error?.('Socket error', {
+            error,
+        });
+    }
+
+    protected isValidRoom(room: unknown): room is string {
+        return typeof room === 'string' && room.length > 0 && room.length <= 200 && /^[a-zA-Z0-9:_-]+$/.test(room);
+    }
+
+    protected async canAccessRoom(socket: Socket, room: string, action: 'subscribe' | 'unsubscribe'): Promise<boolean> {
+        const accessControl = this.config.roomAccessControl;
+
+        if (!accessControl) {
+            return !this.config.roomAccessControlRequired;
+        }
+
+        try {
+            return await accessControl({
+                socket,
+                userID: socket.data.userID,
+                auth: socket.data.auth,
+                room,
+                action,
+            });
+        } catch (error) {
+            this.logger.error?.('Room access control error', {
+                userID: socket.data.userID,
+                room,
+                action,
+                error,
+            });
+
+            return false;
+        }
     }
 }
