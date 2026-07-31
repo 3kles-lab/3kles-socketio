@@ -25,7 +25,6 @@
   "author": "3Kles Lab",
   "license": "ISC",
   "dependencies": {
-    "@3kles/3kles-corebe": "^3.0.4",
     "@3kles/3kles-amqpbroker": "^2.0.0",
     "dotenv": "^16.0.3",
     "jsonwebtoken": "^9.0.2",
@@ -34,6 +33,7 @@
     "jwks-rsa": "^3.1.0"
   },
   "devDependencies": {
+    "@3kles/3kles-corebe": "^3.0.4",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.12",
     "@types/node": "^22.5.0",
