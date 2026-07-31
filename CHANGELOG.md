@@ -1,3 +1,10 @@
+## [2.4.1](http://gitlab.3kles.local/3kles/lib/corejs/3kles-socketio/compare/v2.4.0...v2.4.1) (2026-07-31)
+
+
+### Bug Fixes
+
+* Move 3kles-corebe dependency into devDependencies ([ea653fb](http://gitlab.3kles.local/3kles/lib/corejs/3kles-socketio/commit/ea653fb0dc52e380049a0ceecf15b9b1f5e1ccd5))
+
 # [2.4.0](http://gitlab.3kles.local/3kles/lib/corejs/3kles-socketio/compare/v2.3.1...v2.4.0) (2026-07-30)
 
 
